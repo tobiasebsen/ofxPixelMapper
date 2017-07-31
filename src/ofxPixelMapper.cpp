@@ -4,7 +4,6 @@
 //  Created by Tobias Ebsen on 19/06/17.
 //
 //
-
 #include "ofxPixelMapper.h"
 
 
@@ -79,3 +78,4 @@ void ofxPixelMapper::read(int universe, unsigned char * data) {
     glReadPixels(0, universe, numPixelsPerUniverse, 1, ((mode == RGB) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, data);
     fbo.unbind();
 }
+
