@@ -15,6 +15,7 @@ void ofxPixelMapper::setup(PixelMode mode, int numUniverses, int numChannels) {
 
     numChannelsPerPixel = mode == RGB ? 3 : 4;
     numPixelsPerUniverse = (int)ceilf((float)numChannelsPerUniverse / numChannelsPerPixel);
+    numPixelsTotal = 0;
     
     fbo.allocate(numPixelsPerUniverse, numUniverses, mode == RGB ? GL_RGB : GL_RGBA);
     fbo.getTexture().setTextureMinMagFilter(GL_NEAREST, GL_NEAREST);
@@ -25,6 +26,10 @@ void ofxPixelMapper::setup(PixelMode mode, int numUniverses, int numChannels) {
 
 int ofxPixelMapper::getNumUniverses() {
     return numUniverses;
+}
+
+int ofxPixelMapper::getNumPixels() {
+    return numPixelsTotal;
 }
 
 void ofxPixelMapper::addQuad(int pixel, int universe, float x1, float y1, float x2, float y2) {
@@ -38,6 +43,8 @@ void ofxPixelMapper::addQuad(int pixel, int universe, float x1, float y1, float 
     mesh.addVertex(ofVec2f(pixel+1, universe));
     mesh.addVertex(ofVec2f(pixel+1, universe+1));
     mesh.addVertex(ofVec2f(pixel, universe+1));
+    
+    numPixelsTotal++;
 }
 
 void ofxPixelMapper::addGrid(int pixel, int universe, float x1, float y1, float x2, float y2, int hcount, int vcount) {
@@ -61,21 +68,41 @@ void ofxPixelMapper::updateMapping() {
 
 void ofxPixelMapper::update(ofTexture & tex) {
     fbo.begin();
+    ofClear(0, 0, 0);
     ofDisableAlphaBlending();
-    tex.setTextureMinMagFilter(GL_LINEAR, GL_LINEAR);
+    
     tex.bind();
+
+    GLint magFilter = GL_LINEAR;
+    glGetTexParameteriv(tex.texData.textureTarget, GL_TEXTURE_MAG_FILTER, &magFilter);
+    GLint minFilter = GL_LINEAR;
+    glGetTexParameteriv(tex.texData.textureTarget, GL_TEXTURE_MIN_FILTER, &minFilter);
+    //tex.setTextureMinMagFilter(GL_LINEAR, GL_LINEAR);
+    glTexParameteri(tex.texData.textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(tex.texData.textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    
+    ofSetColor(255);
+    vbo.enableTexCoords();
     vbo.draw(GL_QUADS, 0, mesh.getNumVertices());
+    
     tex.unbind();
     fbo.end();
+    
+    tex.setTextureMinMagFilter(minFilter, magFilter);
+}
+
+void ofxPixelMapper::draw(float x, float y) {
+    fbo.draw(x, y);
 }
 
 void ofxPixelMapper::draw(float x, float y, float w, float h) {
     fbo.draw(x, y, w, h);
 }
 
-void ofxPixelMapper::read(int universe, unsigned char * data) {
+void ofxPixelMapper::read(int universe, unsigned char * data, int byteLength) {
+    int npixels = (byteLength / numChannelsPerPixel) * numChannelsPerPixel;
     fbo.bind();
-    glReadPixels(0, universe, numPixelsPerUniverse, 1, ((mode == RGB) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, data);
+    glReadPixels(0, universe, MIN(numPixelsPerUniverse, npixels), 1, ((mode == RGB) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, data);
     fbo.unbind();
 }
 
