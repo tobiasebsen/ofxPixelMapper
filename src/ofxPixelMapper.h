@@ -22,18 +22,23 @@ public:
 
     // Add mapping
     void addQuad(int pixel, int universe, float x1, float y1, float x2, float y2);
+    void addQuad(int pixel, int universe, ofRectangle rect);
     void addGrid(int pixel, int universe, float x1, float y1, float x2, float y2, int hcount, int vcount);
+    void addGrid(int pixel, int universe, ofRectangle rect, int hcount, int vcount);
     void updateMapping();
     
     int getNumUniverses();
     int getNumPixels();
+    int getNumChannelsPerUniverse();
+    int getNumPixelsPerUniverse();
+    
+    void setBrightness(float bright);
     
     // Transfer texture data to pixels
     void update(ofTexture & tex);
     
     // Draw the internal frame buffer
-    void draw(float x, float y);
-    void draw(float x, float y, float w, float h);
+    void draw(float x, float y, float scale = 1.f);
     
     // Read pixel data
     void read(int universe, unsigned char * data, int byteLength);
@@ -50,4 +55,6 @@ protected:
     int numChannelsPerPixel;
     int numPixelsPerUniverse;
     int numPixelsTotal;
+    
+    float brightness;
 };
