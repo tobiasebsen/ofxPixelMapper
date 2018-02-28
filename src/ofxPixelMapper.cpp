@@ -17,7 +17,7 @@ void ofxPixelMapper::setup(PixelMode mode, int numUniverses, int numChannels) {
     numPixelsPerUniverse = (int)ceilf((float)numChannelsPerUniverse / numChannelsPerPixel);
     numPixelsTotal = 0;
     
-    fbo.allocate(numPixelsPerUniverse, numUniverses, mode == RGB ? GL_RGB : GL_RGBA, 8);
+    fbo.allocate(numPixelsPerUniverse, numUniverses, mode == RGB ? GL_RGB : GL_RGBA, 0);
     fbo.getTexture().setTextureMinMagFilter(GL_NEAREST, GL_NEAREST);
     fbo.begin();
     ofClear(0, 0);
