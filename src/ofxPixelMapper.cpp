@@ -6,6 +6,10 @@
 //
 #include "ofxPixelMapper.h"
 
+ofxPixelMapper::ofxPixelMapper() {
+    useNormalized = false;
+    useCalib = false;
+}
 
 void ofxPixelMapper::setup(PixelMode mode, int numUniverses, int numChannels) {
 
@@ -46,19 +50,34 @@ void ofxPixelMapper::setBrightness(float bright) {
     this->brightness = bright;
 }
 
-void ofxPixelMapper::addQuad(int pixel, int universe, float x1, float y1, float x2, float y2) {
+void ofxPixelMapper::setUseCalibration(bool useCalib) {
+    this->useCalib = useCalib;
+}
 
-    mesh.addTexCoord(ofVec2f(x1, y1));
-    mesh.addTexCoord(ofVec2f(x2, y1));
-    mesh.addTexCoord(ofVec2f(x2, y2));
-    mesh.addTexCoord(ofVec2f(x1, y2));
+void ofxPixelMapper::addQuad(int pixel, int universe, ofVec2f v1, ofVec2f v2, ofVec2f v3, ofVec2f v4, ofFloatColor calib) {
+    
+    mesh.addTexCoord(v1);
+    mesh.addTexCoord(v2);
+    mesh.addTexCoord(v3);
+    mesh.addTexCoord(v4);
     
     mesh.addVertex(ofVec2f(pixel, universe));
     mesh.addVertex(ofVec2f(pixel+1, universe));
     mesh.addVertex(ofVec2f(pixel+1, universe+1));
     mesh.addVertex(ofVec2f(pixel, universe+1));
     
+    mesh.addColor(calib);
+    mesh.addColor(calib);
+    mesh.addColor(calib);
+    mesh.addColor(calib);
+    
     numPixelsTotal++;
+}
+
+
+void ofxPixelMapper::addQuad(int pixel, int universe, float x1, float y1, float x2, float y2) {
+    
+    addQuad(pixel, universe, ofVec2f(x1, y1), ofVec2f(x2, y1), ofVec2f(x2, y2), ofVec2f(x1, y2));
 }
 
 void ofxPixelMapper::addQuad(int pixel, int universe, ofRectangle rect) {
@@ -88,6 +107,15 @@ void ofxPixelMapper::updateMapping() {
     vbo.setMesh(mesh, GL_STATIC_DRAW);
 }
 
+void ofxPixelMapper::normalizeMapCoords(int width, int height) {
+    vector<ofVec2f> & mapping = mesh.getTexCoords();
+    for (ofVec2f & m : mapping) {
+        m.x /= (float)width;
+        m.y /= (float)height;
+    }
+    useNormalized = true;
+}
+
 void ofxPixelMapper::update(ofTexture & tex) {
     fbo.begin();
     ofClear(0, 0, 0);
@@ -106,9 +134,16 @@ void ofxPixelMapper::update(ofTexture & tex) {
     glTexParameteri(tex.texData.textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     err = glGetError();
     
-    ofSetColor(brightness * 255.f);
     vbo.enableTexCoords();
+
+    if (useCalib)
+        vbo.enableColors();
+    else {
+        vbo.disableColors();
+        ofSetColor(brightness * 255.f);
+    }
     vbo.draw(GL_QUADS, 0, mesh.getNumVertices());
+    ofSetColor(255);
     
     glBindTexture(tex.texData.textureTarget, 0);
     glDisable(tex.texData.textureTarget);
@@ -122,10 +157,32 @@ void ofxPixelMapper::draw(float x, float y, float scale) {
     fbo.draw(x, y, fbo.getWidth() * scale, fbo.getHeight() * scale);
 }
 
+void ofxPixelMapper::drawMapping() {
+    vector<ofVec2f> & mapping = mesh.getTexCoords();
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, mapping.data());
+    glDrawArrays(GL_QUADS, 0, mapping.size());
+    glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+void ofxPixelMapper::drawMapping(ofTexture & tex) {
+    vector<ofVec2f> & mapping = mesh.getTexCoords();
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, mapping.data());
+    tex.bind();
+    drawMapping();
+    tex.unbind();
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+}
+
 void ofxPixelMapper::read(int universe, unsigned char * data, int byteLength) {
     int npixels = (byteLength / numChannelsPerPixel) * numChannelsPerPixel;
     fbo.bind();
     glReadPixels(0, universe, MIN(numPixelsPerUniverse, npixels), 1, ((mode == RGB) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, data);
     fbo.unbind();
+}
+
+void ofxPixelMapper::read(ofPixels & pixels) {
+    fbo.readToPixels(pixels);
 }
 
